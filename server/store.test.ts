@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSettings, listProducts } from "./db";
+import { getSettings, listOrdersForCustomer, listProducts } from "./db";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -37,5 +37,18 @@ describe("admin access", () => {
       lastSignedIn: new Date(),
     }));
     await expect(caller.admin.products()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("customer orders access", () => {
+  it("rejects unauthenticated users", async () => {
+    const caller = appRouter.createCaller(baseContext(null));
+    await expect(caller.customer.orders()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("returns only orders matching the customer email", async () => {
+    const orders = await listOrdersForCustomer("SARA@EXAMPLE.COM");
+    expect(orders).toHaveLength(1);
+    expect(orders[0]?.customerEmail).toBe("sara@example.com");
   });
 });
