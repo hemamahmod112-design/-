@@ -27,7 +27,7 @@ export async function getUserById(id: number) {
 }
 
 // أول مستخدم يتسجل في المنصة (أو أي مستخدم بريده يطابق OWNER_EMAIL) يترقّى تلقائياً لـ admin.
-export async function createLocalUser(input: { name: string; email: string; passwordHash: string }) {
+export async function createLocalUser(input: { name: string; email: string; passwordHash: string; requestedRole?: "user" | "seller" }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured (DATABASE_URL missing)");
 
@@ -35,7 +35,7 @@ export async function createLocalUser(input: { name: string; email: string; pass
   const [{ value: existingCount }] = await db.select({ value: count() }).from(users);
   const isFirstUser = existingCount === 0;
   const isOwnerEmail = ENV.ownerEmail !== "" && email === ENV.ownerEmail.toLowerCase();
-  const role: "user" | "admin" = isFirstUser || isOwnerEmail ? "admin" : "user";
+  const role: "user" | "seller" | "admin" = isFirstUser || isOwnerEmail ? "admin" : (input.requestedRole ?? "user");
 
   const result = await db.insert(users).values({ name: input.name, email, passwordHash: input.passwordHash, role, lastSignedIn: new Date() });
   return getUserById(Number(result[0].insertId));

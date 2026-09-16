@@ -15,6 +15,13 @@
       "when": 1789067374042,
       "tag": "0001_lush_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789576015183,
+      "tag": "0002_jittery_sentry",
+      "breakpoints": true
     }
   ]
 }

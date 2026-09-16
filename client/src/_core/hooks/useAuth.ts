@@ -8,6 +8,8 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+type RegistrationType = "user" | "seller";
+
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = "/login" } = options ?? {};
   const utils = trpc.useUtils();
@@ -44,8 +46,8 @@ export function useAuth(options?: UseAuthOptions) {
   );
 
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      await registerMutation.mutateAsync({ name, email, password });
+    async (name: string, email: string, password: string, type: RegistrationType = "user") => {
+      await registerMutation.mutateAsync({ name, email, password, type });
     },
     [registerMutation]
   );

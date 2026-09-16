@@ -14,6 +14,7 @@ const authInput = z.object({
 
 const registerInput = authInput.extend({
   name: z.string().min(1).max(120),
+  type: z.enum(["user", "seller"]).default("user"),
 });
 
 const productInput = z.object({
@@ -45,7 +46,7 @@ export const appRouter = router({
       }
 
       const passwordHash = await hashPassword(input.password);
-      const user = await createLocalUser({ name: input.name.trim(), email, passwordHash });
+      const user = await createLocalUser({ name: input.name.trim(), email, passwordHash, requestedRole: input.type });
       if (!user) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء الحساب" });
       }

@@ -5,7 +5,7 @@ vi.mock("./db", () => {
   let nextId = 1;
   return {
     getUserByEmail: async (email: string) => store.get(email.toLowerCase()),
-    createLocalUser: async (input: { name: string; email: string; passwordHash: string }) => {
+    createLocalUser: async (input: { name: string; email: string; passwordHash: string; requestedRole?: "user" | "seller" }) => {
       const email = input.email.toLowerCase();
       if (store.has(email)) throw new Error("duplicate");
       const user = {
@@ -15,7 +15,7 @@ vi.mock("./db", () => {
         email,
         passwordHash: input.passwordHash,
         loginMethod: "local",
-        role: store.size === 0 ? "admin" : "user",
+        role: store.size === 0 ? "admin" : (input.requestedRole ?? "user"),
         createdAt: new Date(),
         updatedAt: new Date(),
         lastSignedIn: new Date(),
@@ -64,6 +64,12 @@ describe("auth.register / auth.login", () => {
     await expect(
       caller.auth.login({ email: "wrongpass@example.com", password: "notthesame" })
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("registers a seller account when the seller type is selected", async () => {
+    const caller = appRouter.createCaller(fakeCtx());
+    const result = await caller.auth.register({ name: "Seller", email: "seller@example.com", password: "supersecret", type: "seller" });
+    expect(result.user.role).toBe("seller");
   });
 
   it("logs in successfully with the correct password", async () => {
