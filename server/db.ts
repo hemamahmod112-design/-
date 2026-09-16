@@ -1,6 +1,6 @@
 import { and, count, desc, eq, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { defaultSettings, InsertProduct, orders, products, seedOrders, seedProducts, storeSettings, users } from "../drizzle/schema";
+import { defaultSettings, InsertProduct, orders, products, seedOrders, seedProducts, storeSettings, stores, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -126,4 +126,40 @@ export async function updateSettings(values: Record<string, string>) {
 export async function listOrdersForCustomerById(userId: number) {
   const user = await getUserById(userId);
   return user?.email ? listOrdersForCustomer(user.email) : [];
+}
+
+export async function getStoreByOwnerId(ownerId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(stores).where(eq(stores.ownerId, ownerId)).limit(1);
+  return result[0];
+}
+
+export async function createStoreForOwner(input: { ownerId: number; name: string; slug: string; description?: string; logoUrl?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured (DATABASE_URL missing)");
+  const result = await db.insert(stores).values({ ...input, status: "pending" });
+  const created = await db.select().from(stores).where(eq(stores.id, Number(result[0].insertId))).limit(1);
+  return created[0];
+}
+
+export async function listProductsForStore(storeId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(products).where(eq(products.storeId, storeId)).orderBy(desc(products.updatedAt));
+}
+
+export async function updateProductForStore(storeId: number, id: number, input: Partial<InsertProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured (DATABASE_URL missing)");
+  await db.update(products).set(input).where(and(eq(products.id, id), eq(products.storeId, storeId)));
+  const result = await db.select().from(products).where(and(eq(products.id, id), eq(products.storeId, storeId))).limit(1);
+  return result[0];
+}
+
+export async function deleteProductForStore(storeId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured (DATABASE_URL missing)");
+  await db.delete(products).where(and(eq(products.id, id), eq(products.storeId, storeId)));
+  return true;
 }

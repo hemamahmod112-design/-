@@ -48,19 +48,20 @@ describe("auth.register / auth.login", () => {
     });
     expect(result.success).toBe(true);
     expect(result.user.role).toBe("admin");
+    expect("passwordHash" in result.user).toBe(false);
   });
 
   it("rejects duplicate email registration", async () => {
     const caller = appRouter.createCaller(fakeCtx());
-    await caller.auth.register({ name: "A", email: "dup@example.com", password: "supersecret" });
+    await caller.auth.register({ name: "User A", email: "dup@example.com", password: "supersecret" });
     await expect(
-      caller.auth.register({ name: "B", email: "dup@example.com", password: "anotherpass" })
+      caller.auth.register({ name: "User B", email: "dup@example.com", password: "anotherpass" })
     ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 
   it("rejects login with wrong password", async () => {
     const caller = appRouter.createCaller(fakeCtx());
-    await caller.auth.register({ name: "C", email: "wrongpass@example.com", password: "supersecret" });
+    await caller.auth.register({ name: "User C", email: "wrongpass@example.com", password: "supersecret" });
     await expect(
       caller.auth.login({ email: "wrongpass@example.com", password: "notthesame" })
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
@@ -74,8 +75,15 @@ describe("auth.register / auth.login", () => {
 
   it("logs in successfully with the correct password", async () => {
     const caller = appRouter.createCaller(fakeCtx());
-    await caller.auth.register({ name: "D", email: "correct@example.com", password: "supersecret" });
+    await caller.auth.register({ name: "User D", email: "correct@example.com", password: "supersecret" });
     const result = await caller.auth.login({ email: "correct@example.com", password: "supersecret" });
     expect(result.success).toBe(true);
+    expect("passwordHash" in result.user).toBe(false);
+  });
+
+  it("rejects blank or too-short registration names", async () => {
+    const caller = appRouter.createCaller(fakeCtx());
+    await expect(caller.auth.register({ name: " ", email: "short-name@example.com", password: "supersecret" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

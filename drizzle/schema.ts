@@ -15,8 +15,21 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const stores = mysqlTable("stores", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerId: int("ownerId").notNull().unique(),
+  name: varchar("name", { length: 180 }).notNull(),
+  slug: varchar("slug", { length: 180 }).notNull().unique(),
+  description: text("description"),
+  logoUrl: text("logoUrl"),
+  status: mysqlEnum("status", ["active", "pending", "suspended"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const products = mysqlTable("products", {
   id: int("id").autoincrement().primaryKey(),
+  storeId: int("storeId"),
   name: varchar("name", { length: 180 }).notNull(),
   description: text("description"),
   category: varchar("category", { length: 80 }).notNull(),
@@ -31,6 +44,7 @@ export const products = mysqlTable("products", {
 
 export const orders = mysqlTable("orders", {
   id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId"),
   orderNumber: varchar("orderNumber", { length: 32 }).notNull().unique(),
   customerName: varchar("customerName", { length: 160 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }),
@@ -38,6 +52,17 @@ export const orders = mysqlTable("orders", {
   status: mysqlEnum("status", ["new", "processing", "shipped", "completed", "cancelled"]).default("new").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const orderItems = mysqlTable("orderItems", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull(),
+  productId: int("productId").notNull(),
+  productName: varchar("productName", { length: 180 }).notNull(),
+  unitPriceMinor: int("unitPriceMinor").notNull(),
+  quantity: int("quantity").notNull(),
+  totalMinor: int("totalMinor").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export const storeSettings = mysqlTable("storeSettings", {
@@ -49,24 +74,28 @@ export const storeSettings = mysqlTable("storeSettings", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type Store = typeof stores.$inferSelect;
+export type InsertStore = typeof stores.$inferInsert;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
+export type OrderItem = typeof orderItems.$inferSelect;
 export type StoreSetting = typeof storeSettings.$inferSelect;
 export type InsertProduct = typeof products.$inferInsert;
 export type InsertOrder = typeof orders.$inferInsert;
+export type InsertOrderItem = typeof orderItems.$inferInsert;
 export type InsertStoreSetting = typeof storeSettings.$inferInsert;
 
 export const seedProducts: Product[] = [
-  { id: 1, name: "طقم عناية يومي بالبشرة", description: "روتين عناية عملي لبشرة نضرة", category: "الجمال والعناية", priceMinor: 12900, compareAtMinor: 16900, imageUrl: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=85", stock: 24, status: "active", createdAt: new Date(), updatedAt: new Date() },
-  { id: 2, name: "سماعات لاسلكية بإلغاء الضوضاء", description: "صوت واضح وبطارية طويلة", category: "إلكترونيات", priceMinor: 28900, compareAtMinor: 34900, imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=85", stock: 18, status: "active", createdAt: new Date(), updatedAt: new Date() },
-  { id: 3, name: "حقيبة جلد طبيعي — إصدار محدود", description: "حقيبة عملية بلمسة فاخرة", category: "أزياء", priceMinor: 42000, compareAtMinor: 52000, imageUrl: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=85", stock: 8, status: "active", createdAt: new Date(), updatedAt: new Date() },
-  { id: 4, name: "طقم قهوة عربية فاخر", description: "تفاصيل أنيقة لضيافة لا تُنسى", category: "المنزل والمطبخ", priceMinor: 19500, compareAtMinor: 24000, imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85", stock: 13, status: "active", createdAt: new Date(), updatedAt: new Date() },
+  { id: 1, storeId: null, name: "طقم عناية يومي بالبشرة", description: "روتين عناية عملي لبشرة نضرة", category: "الجمال والعناية", priceMinor: 12900, compareAtMinor: 16900, imageUrl: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=85", stock: 24, status: "active", createdAt: new Date(), updatedAt: new Date() },
+  { id: 2, storeId: null, name: "سماعات لاسلكية بإلغاء الضوضاء", description: "صوت واضح وبطارية طويلة", category: "إلكترونيات", priceMinor: 28900, compareAtMinor: 34900, imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=85", stock: 18, status: "active", createdAt: new Date(), updatedAt: new Date() },
+  { id: 3, storeId: null, name: "حقيبة جلد طبيعي — إصدار محدود", description: "حقيبة عملية بلمسة فاخرة", category: "أزياء", priceMinor: 42000, compareAtMinor: 52000, imageUrl: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=85", stock: 8, status: "active", createdAt: new Date(), updatedAt: new Date() },
+  { id: 4, storeId: null, name: "طقم قهوة عربية فاخر", description: "تفاصيل أنيقة لضيافة لا تُنسى", category: "المنزل والمطبخ", priceMinor: 19500, compareAtMinor: 24000, imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85", stock: 13, status: "active", createdAt: new Date(), updatedAt: new Date() },
 ];
 
 export const seedOrders: Order[] = [
-  { id: 1, orderNumber: "SN-1042", customerName: "سارة أحمد", customerEmail: "sara@example.com", totalMinor: 25800, status: "new", createdAt: new Date(), updatedAt: new Date() },
-  { id: 2, orderNumber: "SN-1039", customerName: "محمد علي", customerEmail: "mohamed@example.com", totalMinor: 28900, status: "processing", createdAt: new Date(), updatedAt: new Date() },
-  { id: 3, orderNumber: "SN-1035", customerName: "ريم خالد", customerEmail: "reem@example.com", totalMinor: 8900, status: "shipped", createdAt: new Date(), updatedAt: new Date() },
+  { id: 1, customerId: null, orderNumber: "SN-1042", customerName: "سارة أحمد", customerEmail: "sara@example.com", totalMinor: 25800, status: "new", createdAt: new Date(), updatedAt: new Date() },
+  { id: 2, customerId: null, orderNumber: "SN-1039", customerName: "محمد علي", customerEmail: "mohamed@example.com", totalMinor: 28900, status: "processing", createdAt: new Date(), updatedAt: new Date() },
+  { id: 3, customerId: null, orderNumber: "SN-1035", customerName: "ريم خالد", customerEmail: "reem@example.com", totalMinor: 8900, status: "shipped", createdAt: new Date(), updatedAt: new Date() },
 ];
 
 export const defaultSettings = { currency: "SAR", currencySymbol: "ر.س", storeName: "سوقنا", shippingThresholdMinor: "25000" };
