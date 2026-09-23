@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Search, ShoppingBag, UserRound, Heart, Plus, Minus, ArrowLeft, ShieldCheck, Truck, Store, X, UserPlus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { ConnectivityStatusBar } from "@/components/ConnectivityStatusBar";
 
 const categories = ["الكل", "أزياء", "إلكترونيات", "الجمال والعناية", "المنزل والمطبخ", "أطفال"];
 const fallbackSettings = { currency: "SAR", currencySymbol: "ر.س", storeName: "سوقنا" };
@@ -25,6 +26,7 @@ export default function Home() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#fbfaf8] text-[#241f1a]">
       <div className="bg-[#30205c] px-4 py-2 text-center text-xs text-white/85">شحن مجاني للطلبات فوق ٢٥٠ ر.س • أمانك أولويتنا مع دفع موثوق ١٠٠٪</div>
+      <ConnectivityStatusBar />
       <header className="sticky top-0 z-30 border-b border-[#eee7df] bg-[#fbfaf8]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-2 text-xl font-black text-[#39206f]"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#f6c744] text-[#39206f]">✦</span>{settings.storeName ?? "سوقنا"}</Link>
