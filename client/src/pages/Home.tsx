@@ -1,59 +1,263 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Search, ShoppingBag, UserRound, Heart, Plus, Minus, ArrowLeft, ShieldCheck, Truck, Store, X, UserPlus } from "lucide-react";
+import {
+  Search,
+  ShoppingBag,
+  UserRound,
+  Heart,
+  Plus,
+  Minus,
+  ArrowLeft,
+  ShieldCheck,
+  Truck,
+  Store,
+  X,
+  UserPlus,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { ConnectivityStatusBar } from "@/components/ConnectivityStatusBar";
+import { useAuth } from "@/_core/hooks/useAuth";
 
-const categories = ["الكل", "أزياء", "إلكترونيات", "الجمال والعناية", "المنزل والمطبخ", "أطفال"];
-const fallbackSettings = { currency: "SAR", currencySymbol: "ر.س", storeName: "سوقنا" };
+const categories = [
+  "الكل",
+  "أزياء",
+  "إلكترونيات",
+  "الجمال والعناية",
+  "المنزل والمطبخ",
+  "أطفال",
+];
+const fallbackSettings = {
+  currency: "SAR",
+  currencySymbol: "ر.س",
+  storeName: "سوقنا",
+};
 
 export default function Home() {
+  const auth = useAuth();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("الكل");
   const [cart, setCart] = useState<Record<number, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
-  const productsQuery = trpc.store.products.useQuery({ search: search || undefined, category }, { retry: false });
-  const settingsQuery = trpc.store.settings.useQuery(undefined, { retry: false });
+  const productsQuery = trpc.store.products.useQuery(
+    { search: search || undefined, category },
+    { retry: false }
+  );
+  const settingsQuery = trpc.store.settings.useQuery(undefined, {
+    retry: false,
+  });
   const products = productsQuery.data ?? [];
   const settings = settingsQuery.data ?? fallbackSettings;
-  const cartItems = useMemo(() => products.filter(p => cart[p.id]).map(p => ({ product: p, quantity: cart[p.id] })), [products, cart]);
+  const cartItems = useMemo(
+    () =>
+      products
+        .filter(p => cart[p.id])
+        .map(p => ({ product: p, quantity: cart[p.id] })),
+    [products, cart]
+  );
   const cartCount = Object.values(cart).reduce((sum, value) => sum + value, 0);
-  const cartTotal = cartItems.reduce((sum, item) => sum + item.product.priceMinor * item.quantity, 0);
-  const formatPrice = (minor: number) => `${(minor / 100).toLocaleString("ar-SA")} ${settings.currencySymbol ?? "ر.س"}`;
-  const addToCart = (id: number) => setCart(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
-  const removeFromCart = (id: number) => setCart(prev => { const next = { ...prev }; if ((next[id] ?? 0) <= 1) delete next[id]; else next[id]--; return next; });
+  const cartTotal = cartItems.reduce(
+    (sum, item) => sum + item.product.priceMinor * item.quantity,
+    0
+  );
+  const formatPrice = (minor: number) =>
+    `${(minor / 100).toLocaleString("ar-SA")} ${settings.currencySymbol ?? "ر.س"}`;
+  const addToCart = (id: number) =>
+    setCart(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+  const removeFromCart = (id: number) =>
+    setCart(prev => {
+      const next = { ...prev };
+      if ((next[id] ?? 0) <= 1) delete next[id];
+      else next[id]--;
+      return next;
+    });
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#fbfaf8] text-[#241f1a]">
-      <div className="bg-[#30205c] px-4 py-2 text-center text-xs text-white/85">شحن مجاني للطلبات فوق ٢٥٠ ر.س • أمانك أولويتنا مع دفع موثوق ١٠٠٪</div>
+      <div className="bg-[#30205c] px-4 py-2 text-center text-xs text-white/85">
+        شحن مجاني للطلبات فوق ٢٥٠ ر.س • أمانك أولويتنا مع دفع موثوق ١٠٠٪
+      </div>
       <ConnectivityStatusBar />
       <header className="sticky top-0 z-30 border-b border-[#eee7df] bg-[#fbfaf8]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2 text-xl font-black text-[#39206f]"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#f6c744] text-[#39206f]">✦</span>{settings.storeName ?? "سوقنا"}</Link>
-          <nav className="hidden items-center gap-5 text-sm font-semibold text-[#6d655e] lg:flex"><a href="#discover">اكتشف</a><a href="#categories">التصنيفات</a><a href="#stores">المتاجر</a></nav>
-          <div className="relative mx-auto hidden max-w-md flex-1 md:block"><Search className="absolute right-3 top-3 h-4 w-4 text-[#9a9087]" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن منتج، متجر أو تصنيف" className="h-10 w-full rounded-full border border-[#dfd6cd] bg-white px-10 text-sm outline-none transition focus:border-[#6d45bc]" /></div>
-          <Link href="/login" className="hidden items-center gap-2 rounded-full border border-[#d9c9f5] px-4 py-2 text-sm font-bold text-[#4b2b91] sm:flex"><UserRound className="h-4 w-4" /> دخول / تسجيل</Link>
-          <button onClick={() => setCartOpen(true)} className="relative rounded-full bg-[#f0e8ff] p-3 text-[#4b2b91]" aria-label="السلة"><ShoppingBag className="h-5 w-5" />{cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#ed6a4b] text-[10px] text-white">{cartCount}</span>}</button>
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-xl font-black text-[#39206f]"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#f6c744] text-[#39206f]">
+              ✦
+            </span>
+            {settings.storeName ?? "سوقنا"}
+          </Link>
+          <nav className="hidden items-center gap-5 text-sm font-semibold text-[#6d655e] lg:flex">
+            <a href="#discover">اكتشف</a>
+            <a href="#categories">التصنيفات</a>
+            <a href="#stores">المتاجر</a>
+          </nav>
+          <div className="relative mx-auto hidden max-w-md flex-1 md:block">
+            <Search className="absolute right-3 top-3 h-4 w-4 text-[#9a9087]" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="ابحث عن منتج، متجر أو تصنيف"
+              className="h-10 w-full rounded-full border border-[#dfd6cd] bg-white px-10 text-sm outline-none transition focus:border-[#6d45bc]"
+            />
+          </div>
+          {auth.isAuthenticated ? (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link
+                href={
+                  auth.user?.role === "seller" || auth.user?.role === "admin"
+                    ? "/store"
+                    : "/orders"
+                }
+                className="max-w-[150px] truncate rounded-full border border-[#d9c9f5] px-4 py-2 text-sm font-bold text-[#4b2b91]"
+              >
+                {auth.user?.name ?? "حسابي"}
+              </Link>
+              <button
+                onClick={() => auth.logout()}
+                className="rounded-full bg-[#241942] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#3a2863]"
+              >
+                تسجيل الخروج
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden items-center gap-2 rounded-full border border-[#d9c9f5] px-4 py-2 text-sm font-bold text-[#4b2b91] sm:flex"
+            >
+              <UserRound className="h-4 w-4" /> دخول / تسجيل جديد
+            </Link>
+          )}
+          <button
+            onClick={() => setCartOpen(true)}
+            className="relative rounded-full bg-[#f0e8ff] p-3 text-[#4b2b91]"
+            aria-label="السلة"
+          >
+            <ShoppingBag className="h-5 w-5" />
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#ed6a4b] text-[10px] text-white">
+                {cartCount}
+              </span>
+            )}
+          </button>
         </div>
-        <div className="mx-auto block max-w-7xl px-4 pb-3 md:hidden"><div className="relative"><Search className="absolute right-3 top-3 h-4 w-4 text-[#9a9087]" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن منتج، متجر أو تصنيف" className="h-10 w-full rounded-full border border-[#dfd6cd] bg-white px-10 text-sm" /></div></div>
+        <div className="mx-auto block max-w-7xl px-4 pb-3 md:hidden">
+          <div className="relative">
+            <Search className="absolute right-3 top-3 h-4 w-4 text-[#9a9087]" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="ابحث عن منتج، متجر أو تصنيف"
+              className="h-10 w-full rounded-full border border-[#dfd6cd] bg-white px-10 text-sm"
+            />
+          </div>
+          {auth.isAuthenticated ? (
+            <div className="mt-3 flex items-center justify-between rounded-2xl bg-white p-2">
+              <Link
+                href={
+                  auth.user?.role === "seller" || auth.user?.role === "admin"
+                    ? "/store"
+                    : "/orders"
+                }
+                className="flex min-w-0 items-center gap-2 px-2 text-sm font-bold text-[#4b2b91]"
+              >
+                <UserRound className="h-4 w-4" />
+                <span className="truncate">{auth.user?.name ?? "حسابي"}</span>
+              </Link>
+              <button
+                onClick={() => auth.logout()}
+                className="rounded-full bg-[#241942] px-3 py-2 text-xs font-bold text-white"
+              >
+                تسجيل الخروج
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-[#eee6ff] p-3 text-sm font-bold text-[#4b2b91]"
+            >
+              <UserRound className="h-4 w-4" /> تسجيل الدخول أو إنشاء حساب
+            </Link>
+          )}
+        </div>
       </header>
 
       <section className="border-b border-[#eee7df] bg-[#f4eee8] px-4 py-6 lg:py-8">
         <div className="mx-auto max-w-7xl rounded-[2rem] border border-[#dcd0ed] bg-white p-4 shadow-[0_18px_55px_rgba(48,32,92,0.1)] md:p-6">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-sm font-bold text-[#8f5fd4]">دخول سريع وآمن</p><h2 className="mt-1 text-2xl font-black text-[#30205c] md:text-3xl">بوابة سوقنا</h2><p className="mt-2 text-sm text-[#756b62]">اختر المسار المناسب لك وابدأ تجربتك في المنصة.</p></div>
-            <div className="hidden items-center gap-2 text-xs font-bold text-[#7d7168] sm:flex"><ShieldCheck className="h-4 w-4 text-[#56a47e]" /> حساب واحد لتجربة متكاملة</div>
+            <div>
+              <p className="text-sm font-bold text-[#8f5fd4]">دخول سريع وآمن</p>
+              <h2 className="mt-1 text-2xl font-black text-[#30205c] md:text-3xl">
+                بوابة سوقنا
+              </h2>
+              <p className="mt-2 text-sm text-[#756b62]">
+                اختر المسار المناسب لك وابدأ تجربتك في المنصة.
+              </p>
+            </div>
+            <div className="hidden items-center gap-2 text-xs font-bold text-[#7d7168] sm:flex">
+              <ShieldCheck className="h-4 w-4 text-[#56a47e]" /> حساب واحد
+              لتجربة متكاملة
+            </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
             <div className="flex flex-col justify-between rounded-2xl bg-[#30205c] p-5 text-white md:p-6">
-              <div><div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-[#f6c744] text-[#30205c]"><UserRound className="h-5 w-5" /></div><h3 className="text-xl font-black">تسجيل الدخول للجميع</h3><p className="mt-2 max-w-sm text-sm leading-7 text-white/70">للمستخدمين والبائعين المسجلين. ادخل إلى حسابك وتابع تجربتك من مكان واحد.</p></div>
-              <Link href="/login" className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-[#f6c744] px-5 py-3 text-sm font-black text-[#30205c]">دخول الحساب <ArrowLeft className="h-4 w-4" /></Link>
+              <div>
+                <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-[#f6c744] text-[#30205c]">
+                  <UserRound className="h-5 w-5" />
+                </div>
+                <h3 className="text-xl font-black">تسجيل الدخول للجميع</h3>
+                <p className="mt-2 max-w-sm text-sm leading-7 text-white/70">
+                  للمستخدمين والبائعين المسجلين. ادخل إلى حسابك وتابع تجربتك من
+                  مكان واحد.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-[#f6c744] px-5 py-3 text-sm font-black text-[#30205c]"
+              >
+                دخول الحساب <ArrowLeft className="h-4 w-4" />
+              </Link>
             </div>
             <div className="rounded-2xl border border-[#eee7df] bg-[#fcfaf7] p-5 md:p-6">
-              <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#eee6ff] text-[#4d2c99]"><UserPlus className="h-5 w-5" /></div><div><h3 className="text-xl font-black text-[#30205c]">تسجيل جديد</h3><p className="mt-1 text-sm text-[#756b62]">اختر نوع الحساب المناسب لك.</p></div></div>
+              <div className="flex items-center gap-3">
+                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#eee6ff] text-[#4d2c99]">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-[#30205c]">
+                    تسجيل جديد
+                  </h3>
+                  <p className="mt-1 text-sm text-[#756b62]">
+                    اختر نوع الحساب المناسب لك.
+                  </p>
+                </div>
+              </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <Link href="/login?mode=register&type=user" className="group rounded-2xl border border-[#e5dbf5] bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#7651c8] hover:shadow-md"><div className="flex items-center justify-between"><span className="font-black text-[#39206f]">مستخدم</span><UserRound className="h-5 w-5 text-[#7651c8]" /></div><p className="mt-2 text-xs leading-6 text-[#8d8279]">تسوق، احفظ اختياراتك وتابع طلباتك.</p></Link>
-                <Link href="/login?mode=register&type=seller" className="group rounded-2xl border border-[#f0dfb0] bg-[#fffaf0] p-4 transition hover:-translate-y-0.5 hover:border-[#d19d2a] hover:shadow-md"><div className="flex items-center justify-between"><span className="font-black text-[#6f4c08]">بائع</span><Store className="h-5 w-5 text-[#c68e18]" /></div><p className="mt-2 text-xs leading-6 text-[#8d8279]">اعرض منتجاتك ووسّع حضورك في السوق.</p></Link>
+                <Link
+                  href="/login?mode=register&type=user"
+                  className="group rounded-2xl border border-[#e5dbf5] bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#7651c8] hover:shadow-md"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-[#39206f]">مستخدم</span>
+                    <UserRound className="h-5 w-5 text-[#7651c8]" />
+                  </div>
+                  <p className="mt-2 text-xs leading-6 text-[#8d8279]">
+                    تسوق، احفظ اختياراتك وتابع طلباتك.
+                  </p>
+                </Link>
+                <Link
+                  href="/login?mode=register&type=seller"
+                  className="group rounded-2xl border border-[#f0dfb0] bg-[#fffaf0] p-4 transition hover:-translate-y-0.5 hover:border-[#d19d2a] hover:shadow-md"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-[#6f4c08]">بائع</span>
+                    <Store className="h-5 w-5 text-[#c68e18]" />
+                  </div>
+                  <p className="mt-2 text-xs leading-6 text-[#8d8279]">
+                    اعرض منتجاتك ووسّع حضورك في السوق.
+                  </p>
+                </Link>
               </div>
             </div>
           </div>
@@ -61,18 +265,328 @@ export default function Home() {
       </section>
 
       <main>
-        <section className="overflow-hidden bg-gradient-to-l from-[#4c2b99] to-[#6e40c6] text-white"><div className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-16 lg:grid-cols-[1fr_1.1fr] lg:px-8 lg:py-24"><div className="order-2 lg:order-1"><div className="mb-5 inline-flex rounded-full border border-white/30 px-4 py-2 text-xs">سوق عربي واحد، اختيارات بلا حدود</div><h1 className="max-w-xl text-4xl font-black leading-tight md:text-6xl">كل ما تحب،<br /><span className="text-[#f6c744]">في مكان واحد.</span></h1><p className="mt-5 max-w-lg text-base leading-8 text-white/75">من متاجر محلية نحبها إلى علامات تثق بها — اكتشف، قارن، وتسوق بتجربة مصممة لك.</p><div className="mt-8 flex flex-wrap gap-3"><a href="#discover" className="rounded-full bg-[#f6c744] px-7 py-3 font-black text-[#34205f]">ابدأ التسوق <ArrowLeft className="mr-2 inline h-4 w-4" /></a><a href="#categories" className="rounded-full border border-white/40 px-7 py-3 font-bold">استكشف التصنيفات</a></div><div className="mt-10 flex gap-8 text-sm text-white/75"><span><Truck className="mb-1 inline h-4 w-4" /> توصيل سريع</span><span><ShieldCheck className="mb-1 inline h-4 w-4" /> متاجر موثوقة</span></div></div><div className="order-1 lg:order-2"><div className="relative mx-auto max-w-lg rotate-2 rounded-[2.5rem] bg-white/10 p-4 shadow-2xl"><img src="https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=85" className="h-80 w-full rounded-[2rem] object-cover md:h-[28rem]" alt="منتجات عناية" /><div className="absolute bottom-8 right-8 rounded-2xl bg-white px-5 py-4 text-[#30205c] shadow-xl"><div className="text-xs text-[#8d827a]">اختيار اليوم</div><div className="font-black">عناية تبدأ منك</div><div className="mt-1 font-bold text-[#4c2b99]">١٢٩ ر.س</div></div></div></div></div></section>
+        <section className="overflow-hidden bg-gradient-to-l from-[#4c2b99] to-[#6e40c6] text-white">
+          <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-16 lg:grid-cols-[1fr_1.1fr] lg:px-8 lg:py-24">
+            <div className="order-2 lg:order-1">
+              <div className="mb-5 inline-flex rounded-full border border-white/30 px-4 py-2 text-xs">
+                سوق عربي واحد، اختيارات بلا حدود
+              </div>
+              <h1 className="max-w-xl text-4xl font-black leading-tight md:text-6xl">
+                كل ما تحب،
+                <br />
+                <span className="text-[#f6c744]">في مكان واحد.</span>
+              </h1>
+              <p className="mt-5 max-w-lg text-base leading-8 text-white/75">
+                من متاجر محلية نحبها إلى علامات تثق بها — اكتشف، قارن، وتسوق
+                بتجربة مصممة لك.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a
+                  href="#discover"
+                  className="rounded-full bg-[#f6c744] px-7 py-3 font-black text-[#34205f]"
+                >
+                  ابدأ التسوق <ArrowLeft className="mr-2 inline h-4 w-4" />
+                </a>
+                <a
+                  href="#categories"
+                  className="rounded-full border border-white/40 px-7 py-3 font-bold"
+                >
+                  استكشف التصنيفات
+                </a>
+              </div>
+              <div className="mt-10 flex gap-8 text-sm text-white/75">
+                <span>
+                  <Truck className="mb-1 inline h-4 w-4" /> توصيل سريع
+                </span>
+                <span>
+                  <ShieldCheck className="mb-1 inline h-4 w-4" /> متاجر موثوقة
+                </span>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <div className="relative mx-auto max-w-lg rotate-2 rounded-[2.5rem] bg-white/10 p-4 shadow-2xl">
+                <img
+                  src="https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=85"
+                  className="h-80 w-full rounded-[2rem] object-cover md:h-[28rem]"
+                  alt="منتجات عناية"
+                />
+                <div className="absolute bottom-8 right-8 rounded-2xl bg-white px-5 py-4 text-[#30205c] shadow-xl">
+                  <div className="text-xs text-[#8d827a]">اختيار اليوم</div>
+                  <div className="font-black">عناية تبدأ منك</div>
+                  <div className="mt-1 font-bold text-[#4c2b99]">١٢٩ ر.س</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <section id="categories" className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><div className="mb-6 flex items-center justify-between"><div><p className="text-sm font-bold text-[#8f5fd4]">تصفح حسب ذوقك</p><h2 className="mt-1 text-2xl font-black">ماذا تبحث اليوم؟</h2></div><span className="text-sm text-[#8b8178]">اختر تصنيفاً</span></div><div className="grid grid-cols-2 gap-3 md:grid-cols-6">{categories.map((item, index) => <button key={item} onClick={() => setCategory(item)} className={`rounded-2xl border p-4 text-center transition hover:-translate-y-1 ${category === item ? "border-[#7651c8] bg-[#eee6ff] text-[#4c2b99]" : "border-[#eee7df] bg-white"}`}><div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full bg-[#fff4da] text-lg">{["✦", "⌁", "◒", "✧", "⌂", "♡"][index]}</div><span className="text-sm font-bold">{item}</span></button>)}</div></section>
+        <section
+          id="categories"
+          className="mx-auto max-w-7xl px-4 py-12 lg:px-8"
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-[#8f5fd4]">تصفح حسب ذوقك</p>
+              <h2 className="mt-1 text-2xl font-black">ماذا تبحث اليوم؟</h2>
+            </div>
+            <span className="text-sm text-[#8b8178]">اختر تصنيفاً</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+            {categories.map((item, index) => (
+              <button
+                key={item}
+                onClick={() => setCategory(item)}
+                className={`rounded-2xl border p-4 text-center transition hover:-translate-y-1 ${category === item ? "border-[#7651c8] bg-[#eee6ff] text-[#4c2b99]" : "border-[#eee7df] bg-white"}`}
+              >
+                <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full bg-[#fff4da] text-lg">
+                  {["✦", "⌁", "◒", "✧", "⌂", "♡"][index]}
+                </div>
+                <span className="text-sm font-bold">{item}</span>
+              </button>
+            ))}
+          </div>
+        </section>
 
-        <section id="discover" className="mx-auto max-w-7xl px-4 pb-16 lg:px-8"><div className="mb-7 flex items-end justify-between"><div><p className="text-sm font-bold text-[#8f5fd4]">مختارات سوقنا</p><h2 className="mt-1 text-3xl font-black">منتجات تستحق التجربة</h2></div><span className="text-sm text-[#8b8178]">{products.length} منتجات</span></div>{productsQuery.isLoading ? <div className="rounded-3xl bg-white p-12 text-center text-[#8b8178]">نجهز لك الاختيارات...</div> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{products.map(product => <article key={product.id} className="group overflow-hidden rounded-3xl border border-[#eee7df] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><div className="relative overflow-hidden"><img src={product.imageUrl ?? "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=85"} alt={product.name} className="h-56 w-full object-cover transition duration-500 group-hover:scale-105" /><button className="absolute left-3 top-3 rounded-full bg-white/90 p-2 text-[#7f6e62]" aria-label="إضافة للمفضلة"><Heart className="h-4 w-4" /></button>{product.compareAtMinor && <span className="absolute right-3 top-3 rounded-full bg-[#ed6a4b] px-2 py-1 text-xs font-bold text-white">عرض</span>}</div><div className="p-4"><p className="text-xs font-bold text-[#9470ce]">{product.category}</p><h3 className="mt-2 line-clamp-1 font-black">{product.name}</h3><p className="mt-2 text-sm text-[#958a81]">{product.description}</p><div className="mt-4 flex items-center justify-between"><div><span className="font-black text-[#3f2778]">{formatPrice(product.priceMinor)}</span>{product.compareAtMinor && <del className="mr-2 text-xs text-[#a59a90]">{formatPrice(product.compareAtMinor)}</del>}</div><button onClick={() => addToCart(product.id)} className="grid h-10 w-10 place-items-center rounded-full bg-[#4d2c99] text-white transition hover:bg-[#362069]" aria-label="إضافة للسلة"><Plus className="h-5 w-5" /></button></div></div></article>)}</div>}{!productsQuery.isLoading && products.length === 0 && <div className="rounded-3xl border border-dashed border-[#d9c9f5] bg-white p-12 text-center text-[#7e746b]">لا توجد نتائج مطابقة. جرّب كلمة بحث أخرى.</div>}</section>
+        <section id="discover" className="mx-auto max-w-7xl px-4 pb-16 lg:px-8">
+          <div className="mb-7 flex items-end justify-between">
+            <div>
+              <p className="text-sm font-bold text-[#8f5fd4]">مختارات سوقنا</p>
+              <h2 className="mt-1 text-3xl font-black">منتجات تستحق التجربة</h2>
+            </div>
+            <span className="text-sm text-[#8b8178]">
+              {products.length} منتجات
+            </span>
+          </div>
+          {productsQuery.isLoading ? (
+            <div className="rounded-3xl bg-white p-12 text-center text-[#8b8178]">
+              نجهز لك الاختيارات...
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {products.map(product => (
+                <article
+                  key={product.id}
+                  className="group overflow-hidden rounded-3xl border border-[#eee7df] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                >
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={
+                        product.imageUrl ??
+                        "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=85"
+                      }
+                      alt={product.name}
+                      className="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    <button
+                      className="absolute left-3 top-3 rounded-full bg-white/90 p-2 text-[#7f6e62]"
+                      aria-label="إضافة للمفضلة"
+                    >
+                      <Heart className="h-4 w-4" />
+                    </button>
+                    {product.compareAtMinor && (
+                      <span className="absolute right-3 top-3 rounded-full bg-[#ed6a4b] px-2 py-1 text-xs font-bold text-white">
+                        عرض
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-xs font-bold text-[#9470ce]">
+                      {product.category}
+                    </p>
+                    <h3 className="mt-2 line-clamp-1 font-black">
+                      {product.name}
+                    </h3>
+                    <p className="mt-2 text-sm text-[#958a81]">
+                      {product.description}
+                    </p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <div>
+                        <span className="font-black text-[#3f2778]">
+                          {formatPrice(product.priceMinor)}
+                        </span>
+                        {product.compareAtMinor && (
+                          <del className="mr-2 text-xs text-[#a59a90]">
+                            {formatPrice(product.compareAtMinor)}
+                          </del>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => addToCart(product.id)}
+                        className="grid h-10 w-10 place-items-center rounded-full bg-[#4d2c99] text-white transition hover:bg-[#362069]"
+                        aria-label="إضافة للسلة"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          {!productsQuery.isLoading && products.length === 0 && (
+            <div className="rounded-3xl border border-dashed border-[#d9c9f5] bg-white p-12 text-center text-[#7e746b]">
+              لا توجد نتائج مطابقة. جرّب كلمة بحث أخرى.
+            </div>
+          )}
+        </section>
 
-        <section id="stores" className="bg-[#f4eee8] py-16"><div className="mx-auto max-w-7xl px-4 lg:px-8"><div className="mb-8 flex items-center justify-between"><div><p className="text-sm font-bold text-[#8f5fd4]">اكتشف أصحاب الشغف</p><h2 className="mt-1 text-3xl font-black">متاجر نثق بها</h2></div><Store className="h-8 w-8 text-[#7651c8]" /></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{["نورة بيوتي", "ويف تك", "أثر للجلديات", "بيت الدلة"].map((store, i) => <div key={store} className="flex items-center gap-3 rounded-2xl bg-white p-4"><img src={["https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=200&q=80", "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=200&q=80", "https://images.unsplash.com/photo-1523779917675-b6ed3a42a561?auto=format&fit=crop&w=200&q=80", "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=200&q=80"][i]} alt={store} className="h-14 w-14 rounded-xl object-cover" /><div><h3 className="font-black">{store}</h3><p className="text-xs text-[#8d8279]">الرياض • ★ ٥.٠ (١٨٤)</p></div></div>)}</div></div></section>
+        <section id="stores" className="bg-[#f4eee8] py-16">
+          <div className="mx-auto max-w-7xl px-4 lg:px-8">
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-[#8f5fd4]">
+                  اكتشف أصحاب الشغف
+                </p>
+                <h2 className="mt-1 text-3xl font-black">متاجر نثق بها</h2>
+              </div>
+              <Store className="h-8 w-8 text-[#7651c8]" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {["نورة بيوتي", "ويف تك", "أثر للجلديات", "بيت الدلة"].map(
+                (store, i) => (
+                  <div
+                    key={store}
+                    className="flex items-center gap-3 rounded-2xl bg-white p-4"
+                  >
+                    <img
+                      src={
+                        [
+                          "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=200&q=80",
+                          "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=200&q=80",
+                          "https://images.unsplash.com/photo-1523779917675-b6ed3a42a561?auto=format&fit=crop&w=200&q=80",
+                          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=200&q=80",
+                        ][i]
+                      }
+                      alt={store}
+                      className="h-14 w-14 rounded-xl object-cover"
+                    />
+                    <div>
+                      <h3 className="font-black">{store}</h3>
+                      <p className="text-xs text-[#8d8279]">
+                        الرياض • ★ ٥.٠ (١٨٤)
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="bg-[#241942] px-4 py-10 text-white/75"><div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3 lg:px-8"><div><div className="text-xl font-black text-white">سوقنا</div><p className="mt-3 text-sm leading-7">كل شيء أقرب. منصة عربية تجمعك بالمتاجر التي تجعل يومك أجمل.</p></div><div><h3 className="font-bold text-white">تسوق</h3><div className="mt-3 grid gap-2 text-sm"><a href="#discover">كل المنتجات</a><a href="#categories">التصنيفات</a><a href="#stores">المتاجر</a></div></div><div><h3 className="font-bold text-white">الثقة والدعم</h3><p className="mt-3 text-sm leading-7">دعم مستمر • شحن مرن • دفع موثوق</p><Link href="/login" className="mt-3 inline-block text-sm font-bold text-[#f6c744]">إدارة حسابك</Link></div></div><div className="mx-auto mt-8 max-w-7xl border-t border-white/10 pt-5 text-xs lg:px-8">© ٢٠٢٦ سوقنا. صُنع للمتاجر التي تستحق أن تُكتشف.</div></footer>
+      <footer className="bg-[#241942] px-4 py-10 text-white/75">
+        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3 lg:px-8">
+          <div>
+            <div className="text-xl font-black text-white">سوقنا</div>
+            <p className="mt-3 text-sm leading-7">
+              كل شيء أقرب. منصة عربية تجمعك بالمتاجر التي تجعل يومك أجمل.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-bold text-white">تسوق</h3>
+            <div className="mt-3 grid gap-2 text-sm">
+              <a href="#discover">كل المنتجات</a>
+              <a href="#categories">التصنيفات</a>
+              <a href="#stores">المتاجر</a>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-bold text-white">الثقة والدعم</h3>
+            <p className="mt-3 text-sm leading-7">
+              دعم مستمر • شحن مرن • دفع موثوق
+            </p>
+            <Link
+              href="/login"
+              className="mt-3 inline-block text-sm font-bold text-[#f6c744]"
+            >
+              إدارة حسابك
+            </Link>
+          </div>
+        </div>
+        <div className="mx-auto mt-8 max-w-7xl border-t border-white/10 pt-5 text-xs lg:px-8">
+          © ٢٠٢٦ سوقنا. صُنع للمتاجر التي تستحق أن تُكتشف.
+        </div>
+      </footer>
 
-      {cartOpen && <div className="fixed inset-0 z-50"><button className="absolute inset-0 bg-black/40" onClick={() => setCartOpen(false)} aria-label="إغلاق" /><aside className="absolute left-0 top-0 h-full w-full max-w-md overflow-y-auto bg-[#fbfaf8] p-6 shadow-2xl"><div className="flex items-center justify-between"><h2 className="text-2xl font-black">سلة التسوق</h2><button onClick={() => setCartOpen(false)} aria-label="إغلاق السلة"><X /></button></div>{cartItems.length === 0 ? <div className="py-20 text-center text-[#8d8279]">السلة فارغة حالياً</div> : <><div className="mt-8 grid gap-4">{cartItems.map(({ product, quantity }) => <div key={product.id} className="flex gap-3 rounded-2xl bg-white p-3"><img src={product.imageUrl ?? ""} alt={product.name} className="h-16 w-16 rounded-xl object-cover" /><div className="min-w-0 flex-1"><div className="truncate font-bold">{product.name}</div><div className="mt-1 text-sm text-[#4d2c99]">{formatPrice(product.priceMinor)}</div><div className="mt-2 flex items-center gap-3"><button onClick={() => removeFromCart(product.id)} className="rounded-full bg-[#eee6ff] p-1" aria-label="تقليل الكمية"><Minus className="h-3 w-3" /></button><span className="text-sm">{quantity}</span><button onClick={() => addToCart(product.id)} className="rounded-full bg-[#eee6ff] p-1" aria-label="زيادة الكمية"><Plus className="h-3 w-3" /></button></div></div></div>)}</div><div className="mt-8 border-t pt-5"><div className="flex justify-between font-black"><span>الإجمالي</span><span>{formatPrice(cartTotal)}</span></div><button onClick={() => alert("سيتم تفعيل الدفع بعد ربط بوابة الدفع") } className="mt-5 w-full rounded-full bg-[#4d2c99] py-3 font-bold text-white">إتمام الطلب</button></div></>}</aside></div>}
+      {cartOpen && (
+        <div className="fixed inset-0 z-50">
+          <button
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setCartOpen(false)}
+            aria-label="إغلاق"
+          />
+          <aside className="absolute left-0 top-0 h-full w-full max-w-md overflow-y-auto bg-[#fbfaf8] p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black">سلة التسوق</h2>
+              <button
+                onClick={() => setCartOpen(false)}
+                aria-label="إغلاق السلة"
+              >
+                <X />
+              </button>
+            </div>
+            {cartItems.length === 0 ? (
+              <div className="py-20 text-center text-[#8d8279]">
+                السلة فارغة حالياً
+              </div>
+            ) : (
+              <>
+                <div className="mt-8 grid gap-4">
+                  {cartItems.map(({ product, quantity }) => (
+                    <div
+                      key={product.id}
+                      className="flex gap-3 rounded-2xl bg-white p-3"
+                    >
+                      <img
+                        src={product.imageUrl ?? ""}
+                        alt={product.name}
+                        className="h-16 w-16 rounded-xl object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-bold">{product.name}</div>
+                        <div className="mt-1 text-sm text-[#4d2c99]">
+                          {formatPrice(product.priceMinor)}
+                        </div>
+                        <div className="mt-2 flex items-center gap-3">
+                          <button
+                            onClick={() => removeFromCart(product.id)}
+                            className="rounded-full bg-[#eee6ff] p-1"
+                            aria-label="تقليل الكمية"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="text-sm">{quantity}</span>
+                          <button
+                            onClick={() => addToCart(product.id)}
+                            className="rounded-full bg-[#eee6ff] p-1"
+                            aria-label="زيادة الكمية"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-8 border-t pt-5">
+                  <div className="flex justify-between font-black">
+                    <span>الإجمالي</span>
+                    <span>{formatPrice(cartTotal)}</span>
+                  </div>
+                  <button
+                    onClick={() =>
+                      alert("سيتم تفعيل الدفع بعد ربط بوابة الدفع")
+                    }
+                    className="mt-5 w-full rounded-full bg-[#4d2c99] py-3 font-bold text-white"
+                  >
+                    إتمام الطلب
+                  </button>
+                </div>
+              </>
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
