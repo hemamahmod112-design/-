@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   LogOut,
   Package,
+  Pencil,
   Plus,
   Store,
   Trash2,
@@ -13,6 +14,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 
 type ProductDraft = {
+  id?: number;
   name: string;
   description: string;
   category: string;
@@ -55,6 +57,13 @@ export default function SellerSpace() {
       setDraft(null);
     },
   });
+  const updateProduct = trpc.seller.updateProduct.useMutation({
+    onSuccess: () => {
+      utils.seller.products.invalidate();
+      setDraft(null);
+    },
+    onError: err => setError(err.message),
+  });
   const deleteProduct = trpc.seller.deleteProduct.useMutation({
     onSuccess: () => utils.seller.products.invalidate(),
   });
@@ -95,12 +104,38 @@ export default function SellerSpace() {
     if (!draft?.name.trim() || draft.priceMinor <= 0)
       return setError("أدخل اسم المنتج وسعرًا صحيحًا");
     setError(null);
-    createProduct.mutate({
+    const payload = {
       ...draft,
       name: draft.name.trim(),
       description: draft.description.trim() || undefined,
       imageUrl: draft.imageUrl.trim() || undefined,
+    };
+    const productId = draft.id;
+    if (typeof productId === "number") {
+      const { id: _id, ...data } = payload;
+      updateProduct.mutate({ id: productId, data });
+    } else {
+      createProduct.mutate(payload);
+    }
+  };
+
+  const editProduct = (product: (typeof products)[number]) => {
+    setError(null);
+    setDraft({
+      id: product.id,
+      name: product.name,
+      description: product.description ?? "",
+      category: product.category,
+      priceMinor: product.priceMinor,
+      imageUrl: product.imageUrl ?? "",
+      stock: product.stock,
+      status: product.status,
     });
+  };
+
+  const changeStock = (product: (typeof products)[number], delta: number) => {
+    const nextStock = Math.max(0, product.stock + delta);
+    updateProduct.mutate({ id: product.id, data: { stock: nextStock } });
   };
 
   return (
@@ -222,7 +257,10 @@ export default function SellerSpace() {
                 </div>
               </div>
               <button
-                onClick={() => setDraft(emptyProduct)}
+                onClick={() => {
+                  setError(null);
+                  setDraft(emptyProduct);
+                }}
                 className="flex items-center gap-2 rounded-full bg-[#4d2c99] px-5 py-3 text-sm font-bold text-white"
               >
                 <Plus className="h-4 w-4" /> إضافة منتج
@@ -230,7 +268,9 @@ export default function SellerSpace() {
             </section>
             {draft && (
               <section className="mt-5 rounded-[2rem] border border-[#dcd0ed] bg-[#fbf9ff] p-6">
-                <h2 className="text-lg font-black text-[#30205c]">منتج جديد</h2>
+                <h2 className="text-lg font-black text-[#30205c]">
+                  {draft.id ? "تعديل تفاصيل المنتج" : "منتج جديد"}
+                </h2>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   <input
                     value={draft.name}
@@ -290,10 +330,16 @@ export default function SellerSpace() {
                 <div className="mt-5 flex gap-3">
                   <button
                     onClick={saveProduct}
-                    disabled={createProduct.isPending}
+                    disabled={
+                      createProduct.isPending || updateProduct.isPending
+                    }
                     className="rounded-full bg-[#4d2c99] px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
                   >
-                    {createProduct.isPending ? "جاري الحفظ..." : "حفظ المنتج"}
+                    {createProduct.isPending || updateProduct.isPending
+                      ? "جاري الحفظ..."
+                      : draft.id
+                        ? "حفظ التعديلات"
+                        : "حفظ المنتج"}
                   </button>
                   <button
                     onClick={() => setDraft(null)}
@@ -343,15 +389,52 @@ export default function SellerSpace() {
                               {product.category} • {product.stock} في المخزون
                             </p>
                           </div>
-                          <button
-                            onClick={() =>
-                              deleteProduct.mutate({ id: product.id })
-                            }
-                            className="rounded-xl bg-[#fff0ec] p-2 text-[#b84c36]"
-                            aria-label="حذف المنتج"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => editProduct(product)}
+                              className="rounded-xl bg-[#eee6ff] p-2 text-[#4d2c99]"
+                              aria-label="تعديل المنتج"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                deleteProduct.mutate({ id: product.id })
+                              }
+                              className="rounded-xl bg-[#fff0ec] p-2 text-[#b84c36]"
+                              aria-label="حذف المنتج"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#faf7f2] px-3 py-2">
+                          <span className="text-xs font-bold text-[#8d8279]">
+                            التحكم في المخزون
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => changeStock(product, -1)}
+                              disabled={
+                                product.stock === 0 || updateProduct.isPending
+                              }
+                              className="grid h-7 w-7 place-items-center rounded-full bg-white font-black text-[#4d2c99] shadow-sm disabled:opacity-40"
+                              aria-label="تقليل المخزون"
+                            >
+                              −
+                            </button>
+                            <span className="min-w-6 text-center text-sm font-black text-[#30205c]">
+                              {product.stock}
+                            </span>
+                            <button
+                              onClick={() => changeStock(product, 1)}
+                              disabled={updateProduct.isPending}
+                              className="grid h-7 w-7 place-items-center rounded-full bg-[#4d2c99] font-black text-white disabled:opacity-40"
+                              aria-label="زيادة المخزون"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                         <p className="mt-4 font-black text-[#4d2c99]">
                           {(product.priceMinor / 100).toLocaleString("ar-SA")}{" "}
