@@ -2,6 +2,8 @@ import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
+import { signOut } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -11,7 +13,8 @@ type UseAuthOptions = {
 type RegistrationType = "user" | "seller";
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = "/login" } = options ?? {};
+  const { redirectOnUnauthenticated = false, redirectPath = "/login" } =
+    options ?? {};
   const utils = trpc.useUtils();
   const [, navigate] = useLocation();
 
@@ -32,6 +35,12 @@ export function useAuth(options?: UseAuthOptions) {
     },
   });
 
+  const firebaseSyncMutation = trpc.auth.firebaseSync.useMutation({
+    onSuccess: data => {
+      utils.auth.me.setData(undefined, data.user);
+    },
+  });
+
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       utils.auth.me.setData(undefined, null);
@@ -46,21 +55,37 @@ export function useAuth(options?: UseAuthOptions) {
   );
 
   const register = useCallback(
-    async (name: string, email: string, password: string, type: RegistrationType = "user") => {
+    async (
+      name: string,
+      email: string,
+      password: string,
+      type: RegistrationType = "user"
+    ) => {
       await registerMutation.mutateAsync({ name, email, password, type });
     },
     [registerMutation]
+  );
+
+  const syncFirebase = useCallback(
+    async (idToken: string, name?: string, type: RegistrationType = "user") => {
+      await firebaseSyncMutation.mutateAsync({ idToken, name, type });
+    },
+    [firebaseSyncMutation]
   );
 
   const logout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
-      if (error instanceof TRPCClientError && error.data?.code === "UNAUTHORIZED") {
+      if (
+        error instanceof TRPCClientError &&
+        error.data?.code === "UNAUTHORIZED"
+      ) {
         return;
       }
       throw error;
     } finally {
+      await signOut(firebaseAuth).catch(() => undefined);
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }
@@ -70,10 +95,25 @@ export function useAuth(options?: UseAuthOptions) {
     () => ({
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
-      error: meQuery.error ?? logoutMutation.error ?? loginMutation.error ?? registerMutation.error ?? null,
+      error:
+        meQuery.error ??
+        logoutMutation.error ??
+        loginMutation.error ??
+        registerMutation.error ??
+        firebaseSyncMutation.error ??
+        null,
       isAuthenticated: Boolean(meQuery.data),
     }),
-    [meQuery.data, meQuery.error, meQuery.isLoading, logoutMutation.error, logoutMutation.isPending, loginMutation.error, registerMutation.error]
+    [
+      meQuery.data,
+      meQuery.error,
+      meQuery.isLoading,
+      logoutMutation.error,
+      logoutMutation.isPending,
+      loginMutation.error,
+      registerMutation.error,
+      firebaseSyncMutation.error,
+    ]
   );
 
   useEffect(() => {
@@ -84,15 +124,24 @@ export function useAuth(options?: UseAuthOptions) {
     if (window.location.pathname === redirectPath) return;
 
     navigate(redirectPath);
-  }, [redirectOnUnauthenticated, redirectPath, logoutMutation.isPending, meQuery.isLoading, state.user, navigate]);
+  }, [
+    redirectOnUnauthenticated,
+    redirectPath,
+    logoutMutation.isPending,
+    meQuery.isLoading,
+    state.user,
+    navigate,
+  ]);
 
   return {
     ...state,
     refresh: () => meQuery.refetch(),
     login,
     register,
+    syncFirebase,
     logout,
     loginPending: loginMutation.isPending,
     registerPending: registerMutation.isPending,
+    firebaseSyncPending: firebaseSyncMutation.isPending,
   };
 }
